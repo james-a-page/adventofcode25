@@ -2,6 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::sync::mpsc::Iter;
 
 // Default IO
 // ===========================================================================
@@ -15,7 +16,6 @@ where
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
     let file1 = &args[2];
     if let Ok(lines) = read_lines(file1) {
         sol1(lines)
@@ -29,66 +29,80 @@ fn main() {
 
 // Solutions
 // ===========================================================================
+fn in_interval(x: usize, (a, b): (usize, usize)) -> bool {
+    return x >= a && x <= b;
+}
+
+fn merge_intervals(intervals: &[(usize, usize)], (a, b): (usize, usize)) -> Vec<(usize, usize)> {
+    let mut na = a;
+    let mut nb = b;
+
+    for &(ia, ib) in intervals {
+        if ib >= na && ia <= nb {
+            na = na.min(ia);
+            nb = nb.max(ib);
+        }
+    }
+
+    let mut result = Vec::new();
+
+    for &(ia, ib) in intervals {
+        if ib < na || ia > nb {
+            result.push((ia, ib));
+        }
+    }
+
+    // Add merged interval
+    result.push((na, nb));
+    result.sort_by_key(|x| x.0);
+    result
+}
+
 fn sol1(lines: io::Lines<io::BufReader<File>>) {
     let mut total = 0;
-    for bank in lines.map_while(Result::ok) {
-        // Scan bank for highest number, once found scan subsequent to get highest following number
-        let mut digit1 = 0;
-        let mut digit2 = 0;
-        let mut idx: usize = 0;
-        for (i, c) in bank.chars().enumerate() {
-            let c_int = c.to_digit(10).unwrap();
-            if i < bank.len() - 1 {
-                if c_int > digit1 {
-                    digit1 = c_int;
-                    idx = i;
-                }
-            } else {
-                digit2 = c_int;
+    let mut intervals: Vec<(usize, usize)> = vec![];
+    let mut ranges = true;
+    for line in lines.map_while(Result::ok) {
+        if ranges {
+            // Continue til line break
+            if line == "" {
+                ranges = false;
+                continue;
             }
-        }
-
-        for (i, c) in bank.chars().enumerate() {
-            if i > idx {
-                let c_int = c.to_digit(10).unwrap();
-                if c_int > digit2 {
-                    digit2 = c_int
+            let split: Vec<&str> = line.split("-").collect();
+            let a: usize = split[0].parse().unwrap();
+            let b: usize = split[1].parse().unwrap();
+            intervals = merge_intervals(&intervals, (a, b));
+        } else {
+            for int in intervals.iter() {
+                if in_interval(line.parse().unwrap(), *int) {
+                    total += 1;
+                    break;
                 }
             }
         }
-        total += (10 * digit1) + digit2;
     }
-    println!("{}", total);
+    println!("{}", total)
 }
 
 fn sol2(lines: io::Lines<io::BufReader<File>>) {
-    let mut total = 0;
-    for bank in lines.map_while(Result::ok) {
-        let mut array: [u32; 12] = [0; 12];
-        let mut idx: usize = 0;
-        let mut tmp: usize = 0;
-        let mut flag = true;
-        for k in 0..12 {
-            tmp = idx;
-            for (i, c) in bank.chars().enumerate() {
-                if i > idx || flag {
-                    flag = false;
-                    let c_int = c.to_digit(10).unwrap();
-                    if i < bank.len() - (11 - k) {
-                        if c_int > array[k] {
-                            array[k] = c_int;
-                            tmp = i;
-                        }
-                    } else {
-                        idx = tmp;
-                        break;
-                    }
-                }
-                idx = tmp;
-            }
+    let mut intervals: Vec<(usize, usize)> = vec![];
+    for line in lines.map_while(Result::ok) {
+        // Continue til line break
+        if line == "" {
+            break;
         }
-        total += array.iter().fold(0u64, |acc, &d| acc * 10 + d as u64)
+        let split: Vec<&str> = line.split("-").collect();
+        let a: usize = split[0].parse().unwrap();
+        let b: usize = split[1].parse().unwrap();
+        intervals.sort();
+        println!("{:?}", intervals);
+        intervals = merge_intervals(&intervals, (a, b));
     }
-    println!("{}", total);
+    println!("{:?}", intervals);
+    println!(
+        "{}",
+        intervals.iter().fold(0, |acc, (a, b)| acc + (b - a) + 1)
+    );
 }
 // ===========================================================================
