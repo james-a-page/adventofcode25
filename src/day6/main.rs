@@ -98,22 +98,22 @@ fn sol2(lines: io::Lines<io::BufReader<File>>) {
 
     let operations: Vec<String> = grid
         .pop()
-        .expect("")
+        .unwrap()
         .into_iter()
         .filter(|x| x == "+" || x == "*")
         .collect();
 
-    let collapsed_nums: Vec<String> = transpose_grid(grid)
+    let collapsed_strings: Vec<String> = transpose_grid(grid)
         .into_iter()
         .map(|split_num| split_num.join("").replace(" ", ""))
         .collect();
 
-    let total: usize = collapsed_nums
+    let total: usize = collapsed_strings
         .split(|x| x == "")
         .into_iter()
         .zip(operations)
         .map(|(nums, op)| {
-            let vals = nums.iter().map(|x| x.parse::<usize>().expect("msg"));
+            let vals = nums.iter().map(|x| x.parse::<usize>().unwrap());
             match op.as_str() {
                 "*" => vals.fold(1, |acc, n| acc * n),
                 "+" => vals.fold(0, |acc, n| acc + n),
